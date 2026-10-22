@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#07142b">
+  <title>A-mens 라인업 생성기</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #07142b;
+      --card: #102344;
+      --accent: #62c9ff;
+      --btn: #1c60bc;
+      --text: #f5f8fc;
+    }
+    * { box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; }
+    body {
+      margin: 0; padding: 12px;
+      background-color: var(--navy); color: var(--text);
+      padding-bottom: 60px;
+    }
+    .header-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 4px 0 14px;
+    }
+    h1 { font-size: 19px; color: var(--accent); margin: 0; }
+    .btn-photo-mgr {
+      background: #1a3a6c; color: #fff; border: 1px solid var(--accent);
+      border-radius: 8px; padding: 7px 11px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .section {
+      background: var(--card); border-radius: 14px; padding: 14px;
+      margin-bottom: 14px; border: 1px solid rgba(98, 201, 255, 0.3);
+    }
+    .section-title {
+      font-size: 15px; font-weight: 700; color: var(--accent);
+      margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .input-group { display: flex; flex-direction: column; gap: 8px; }
+    .input-row { display: flex; gap: 6px; align-items: center; }
+    input[type="text"], select {
+      background: #061022; color: #fff; border: 1px solid #2b4c7e;
+      border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%;
+    }
+    .order-badge {
+      background: var(--btn); color: #fff; font-weight: 700; font-size: 13px;
+      min-width: 28px; height: 35px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pos-select { width: 76px; flex-shrink: 0; text-align: center; font-weight: 700; }
+    .file-label {
+      background: #1a3a6c; color: #bfe4ff; padding: 8px 9px;
+      border-radius: 8px; font-size: 12px; white-space: nowrap; cursor: pointer;
+      border: 1px solid #3c6ca8; text-align: center; min-width: 62px;
+    }
+    .file-label.has-file { background: #196b38; color: #fff; border-color: #2ea85c; }
+    input[type="file"] { display: none; }
+    .bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-main {
+      width: 100%; background: linear-gradient(135deg, #1c60bc, #0e428c);
+      color: #fff; border: 2px solid var(--accent); border-radius: 12px;
+      padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer;
+      margin-top: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .btn-sub {
+      flex: 1; background: #19325c; color: #fff; border: 1px solid var(--accent);
+      border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    #preview-area { display: none; text-align: center; margin-top: 16px; }
+    #result-img { width: 100%; max-width: 480px; border-radius: 12px; border: 2px solid var(--accent); }
+    .action-row { display: flex; gap: 10px; margin-top: 10px; }
+    .hint { font-size: 12px; color: #9ab4d4; margin-top: 4px; }
+
+    /* 사진 관리 모달 스타일 */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.78); z-index: 1000;
+      justify-content: center; align-items: center; padding: 14px;
+    }
+    .modal-box {
+      background: var(--card); border: 2px solid var(--accent); border-radius: 16px;
+      width: 100%; max-width: 460px; max-height: 85vh; display: flex; flex-direction: column;
+      padding: 16px;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #2b4c7e;
+    }
+    .modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+    .roster-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #061022; padding: 8px 12px; border-radius: 10px; border: 1px solid #233e68;
+    }
+    .roster-info { display: flex; align-items: center; gap: 10px; }
+    .roster-thumb {
+      width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
+      border: 2px solid var(--accent); background: #102344;
+    }
+    .roster-actions { display: flex; gap: 6px; }
+    .btn-xs {
+      background: #1c60bc; color: #fff; border: none; border-radius: 6px;
+      padding: 6px 9px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .btn-xs.reset { background: #5a2e38; color: #ffccd5; }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <h1>⚾ A-mens 라인업 생성기</h1>
+    <button class="btn-photo-mgr" onclick="openPhotoModal()">📸 팀원 사진 관리</button>
+  </div>
+
+  <!-- 1. 경기 정보 -->
+  <div class="section">
+    <div class="section-title">경기 정보</div>
+    <div class="input-group">
+      <input type="text" id="matchup" value="A-MENS VS 상대팀" placeholder="대진 (예: A-MENS VS 상대팀)">
+      <input type="text" id="datetime" value="10월 25일 10시 경기" placeholder="경기 일시">
+    </div>
+  </div>
+
+  <!-- 2. 선발 라인업 (1~10번) -->
+  <div class="section">
+    <div class="section-title">
+      <span>선발 라인업 (STARTING ORDER)</span>
+      <span style="font-size:11px; font-weight:normal; color:#9ab4d4;">선택/입력 시 사진 자동매칭</span>
+    </div>
+    <div class="input-group" id="starter-list"></div>
+    <datalist id="roster-names"></datalist>
+  </div>
+
+  <!-- 3. 후보 선수 (최대 6명) -->
+  <div class="section">
+    <div class="section-title">후보 선수 (BENCH - 최대 6명)</div>
+    <div class="bench-grid" id="bench-list"></div>
+  </div>
+
+  <button class="btn-main" id="generate-btn" onclick="makeLineup()">🎨 라인업 이미지 만들기</button>
+
+  <!-- 4. 결과 미리보기 및 저장/공유 -->
+  <div id="preview-area" class="section">
+    <div class="section-title">생성된 라인업 이미지</div>
+    <img id="result-img" alt="라인업 결과">
+    <p class="hint">💡 아래 버튼을 누르거나 이미지를 길게 눌러 저장하세요.</p>
+    <div class="action-row">
+      <button class="btn-sub" onclick="downloadImage()">📥 이미지 다운로드</button>
+      <button class="btn-sub" style="background:#1c60bc;" onclick="shareImage()">📤 카톡 공유 / 저장</button>
+    </div>
+  </div>
+
+  <!-- 팀원 사진 관리 모달 -->
+  <div class="modal-overlay" id="photo-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span style="font-size:16px; font-weight:700; color:var(--accent);">📸 팀원별 사진 변경 / 관리</span>
+        <button class="btn-xs" style="background:#2b4c7e;" onclick="closePhotoModal()">닫기 ✕</button>
+      </div>
+      <div style="font-size:12px; color:#9ab4d4; margin-bottom:10px;">
+        원하는 이미지로 변경하면 스마트폰(브라우저)에 저장되어 다음에도 바뀐 사진으로 자동 적용됩니다.
+      </div>
+      <div class="modal-body" id="modal-roster-list"></div>
+    </div>
+  </div>
+
+  <canvas id="lineupCanvas" width="1024" height="1536" style="display:none;"></canvas>
+
+<script>
+// 보내주신 이미지의 15명 팀원 명단 및 실제 파일명 하드코딩
+const TEAM_ROSTER = [
+  { full: "김수현", short: "수현", file: "김수현.jpg" },
+  { full: "김지한", short: "지한", file: "김지한.jpg" },
+  { full: "김찬송", short: "찬송", file: "김찬송.jpg" },
+  { full: "김태환", short: "태환", file: "김태환.jpg" },
+  { full: "나종식", short: "종식", file: "나종식.jpg" },
+  { full: "노승철", short: "승철", file: "노승철.jpg" },
+  { full: "박동휘", short: "동휘", file: "박동휘.jpg" },
+  { full: "설은석", short: "은석", file: "설은석.jpg" },
+  { full: "윤시몬", short: "시몬", file: "윤시몬.jpg" },
+  { full: "이사야", short: "사야", file: "이사야.jpg" },
+  { full: "이진우", short: "진우", file: "이진우.jpeg" },
+  { full: "임동수", short: "동수", file: "임동수.jpg" },
+  { full: "임재충", short: "재충", file: "임재충.png" },
+  { full: "전홍표", short: "홍표", file: "전홍표.jpg" },
+  { full: "최준호", short: "준호", file: "최준호.jpg" }
+];
+
+const FIELD_POSITIONS = {
+  "LF": [145, 505], "CF": [512, 455], "RF": [875, 505],
+  "3B": [155, 805], "SS": [350, 705], "2B": [675, 705], "1B": [865, 805],
+  "P":  [512, 930], "C":  [512, 1185], "DH": [855, 1135]
+};
+const POS_LIST = ["LF","CF","RF","3B","SS","2B","1B","P","C","DH"];
+const DEFAULT_POS = ["LF","CF","RF","1B","2B","3B","SS","C","P","DH"];
+const DEFAULT_NAMES = ["김찬송","전홍표","박동휘","이진우","김태환","임동수","윤시몬","노승철","김지한","임재충"];
+
+const PHOTO_SIZE = 98;
+const CARD_W = 174;
+const CARD_H = 52;
+
+// 1) 각 타순별 일회성 업로드 사진 저장
+const rowCustomPhotos = {};
+// 2) 팀원별 영구 변경 사진 저장 (localStorage 연동)
+let savedMemberPhotos = {};
+try {
+  savedMemberPhotos = JSON.parse(localStorage.getItem('amens_member_photos') || '{}');
+} catch (e) {
+  savedMemberPhotos = {};
+}
+
+function initUI() {
+  // 자동완성 datalist 세팅 (풀네임 및 성 뺀 이름 모두 지원)
+  const dataList = document.getElementById('roster-names');
+  TEAM_ROSTER.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.full;
+    dataList.appendChild(opt);
+  });
+
+  const starterContainer = document.getElementById('starter-list');
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    const posOptions = POS_LIST.map(p => `<option value="${p}" ${p === DEFAULT_POS[i] ? 'selected' : ''}>${p}</option>`).join('');
+    row.innerHTML = `
+      <div class="order-badge">${i + 1}</div>
+      <select class="pos-select" id="pos-${i}">${posOptions}</select>
+      <input type="text" id="name-${i}" list="roster-names" value="${DEFAULT_NAMES[i]}" placeholder="선수 이름">
+      <label class="file-label" id="label-${i}">
+        사진변경
+        <input type="file" accept="image/*" onchange="handleRowFile(${i}, this)">
+      </label>
+    `;
+    starterContainer.appendChild(row);
+  }
+
+  const benchContainer = document.getElementById('bench-list');
+  for (let i = 0; i < 6; i++) {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    const posOptions = `<option value="">POS</option>` + POS_LIST.map(p => `<option value="${p}">${p}</option>`).join('');
+    row.innerHTML = `
+      <input type="text" id="bname-${i}" list="roster-names" placeholder="후보${i+1} 이름">
+      <select id="bpos-${i}" style="width:72px; flex-shrink:0;">${posOptions}</select>
+    `;
+    benchContainer.appendChild(row);
+  }
+}
+
+// 이미지를 리사이즈해서 Base64로 반환 (모바일 용량 최적화)
+function resizeImageFile(file, maxSize = 300) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// 타순 줄에서 직접 사진 변경 시
+async function handleRowFile(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const dataUrl = await resizeImageFile(file);
+  rowCustomPhotos[idx] = dataUrl;
+  const lbl = document.getElementById(`label-${idx}`);
+  lbl.textContent = "변경됨✓";
+  lbl.classList.add("has-file");
+}
+
+// 이름으로 TEAM_ROSTER에서 매칭되는 팀원 찾기 (김찬송 or 찬송 모두 매칭)
+function findRosterMember(inputName) {
+  const clean = inputName.trim();
+  return TEAM_ROSTER.find(m => m.full === clean || m.short === clean);
+}
+
+function loadImg(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+// 선수 사진 가져오기 우선순위:
+// 1순위: 해당 타순 줄에서 직접 변경한 사진
+// 2순위: [팀원 사진 관리]에서 내가 바꿔둔 커스텀 사진
+// 3순위: GitHub에 업로드된 기본 파일 (루트 경로 및 photos/ 폴더 모두 탐색)
+async function getPlayerPhoto(idx, name) {
+  if (rowCustomPhotos[idx]) {
+    return await loadImg(rowCustomPhotos[idx]);
+  }
+  const member = findRosterMember(name);
+  const key = member ? member.full : name.trim();
+
+  if (savedMemberPhotos[key]) {
+    return await loadImg(savedMemberPhotos[key]);
+  }
+
+  if (member) {
+    let img = await loadImg(encodeURIComponent(member.file));
+    if (img) return img;
+    img = await loadImg(`photos/${encodeURIComponent(member.file)}`);
+    if (img) return img;
+  }
+
+  // 명단에 없는 이름일 경우 일반 확장자 탐색
+  const exts = ['jpg', 'jpeg', 'png'];
+  for (const ext of exts) {
+    let img = await loadImg(`${encodeURIComponent(name)}.${ext}`);
+    if (img) return img;
+    img = await loadImg(`photos/${encodeURIComponent(name)}.${ext}`);
+    if (img) return img;
+  }
+  return null;
+}
+
+/* ---------------- 팀원 사진 관리 모달 로직 ---------------- */
+function openPhotoModal() {
+  renderModalRoster();
+  document.getElementById('photo-modal').style.display = 'flex';
+}
+
+function closePhotoModal() {
+  document.getElementById('photo-modal').style.display = 'none';
+}
+
+function renderModalRoster() {
+  const list = document.getElementById('modal-roster-list');
+  list.innerHTML = '';
+  TEAM_ROSTER.forEach((m, idx) => {
+    const hasCustom = !!savedMemberPhotos[m.full];
+    const thumbSrc = hasCustom ? savedMemberPhotos[m.full] : m.file;
+    const item = document.createElement('div');
+    item.className = 'roster-item';
+    item.innerHTML = `
+      <div class="roster-info">
+        <img class="roster-thumb" src="${thumbSrc}" onerror="this.src='photos/${m.file}'" alt="${m.full}">
+        <div>
+          <div style="font-weight:700; font-size:14px;">${m.full} <span style="color:#9ab4d4; font-size:12px;">(${m.short})</span></div>
+          <div style="font-size:11px; color:${hasCustom ? '#4cd97b' : '#8fa8c8'};">
+            ${hasCustom ? '사용자 지정 사진 적용중' : '기본 파일 (' + m.file + ')'}
+          </div>
+        </div>
+      </div>
+      <div class="roster-actions">
+        <label class="btn-xs">
+          사진 업로드
+          <input type="file" accept="image/*" onchange="updateMemberPhoto('${m.full}', this)">
+        </label>
+        ${hasCustom ? `<button class="btn-xs reset" onclick="resetMemberPhoto('${m.full}')">기본값</button>` : ''}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+async function updateMemberPhoto(fullName, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const dataUrl = await resizeImageFile(file, 300);
+  savedMemberPhotos[fullName] = dataUrl;
+  try {
+    localStorage.setItem('amens_member_photos', JSON.stringify(savedMemberPhotos));
+  } catch (e) {
+    alert("저장 공간이 부족하여 일부 사진이 영구 저장되지 않을 수 있습니다.");
+  }
+  renderModalRoster();
+}
+
+function resetMemberPhoto(fullName) {
+  delete savedMemberPhotos[fullName];
+  localStorage.setItem('amens_member_photos', JSON.stringify(savedMemberPhotos));
+  renderModalRoster();
+}
+
+/* ---------------- 캔버스 드로잉 로직 ---------------- */
+function fontStr(size, weight = '700') {
+  return `${weight} ${size}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
+}
+
+function fitFont(ctx, text, maxWidth, startSize = 28, minSize = 14) {
+  let size = startSize;
+  while (size >= minSize) {
+    ctx.font = fontStr(size);
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size--;
+  }
+  return minSize;
+}
+
+function centerText(ctx, box, text, size, fill, weight = '700') {
+  const [x1, y1, x2, y2] = box;
+  ctx.font = fontStr(size, weight);
+  ctx.fillStyle = fill;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2 + 1);
+}
+
+function drawRoundedRect(ctx, x1, y1, x2, y2, r, fill, stroke, lineWidth = 0) {
+  ctx.beginPath();
+  ctx.roundRect(x1, y1, x2 - x1, y2 - y1, r);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke && lineWidth > 0) {
+    ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke();
+  }
+}
+
+function drawBoxWithShadow(ctx, box, r = 24, fill = 'rgba(7,20,43,0.92)', stroke = '#62c9ff', lineWidth = 3) {
+  const [x1, y1, x2, y2] = box;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 8;
+  drawRoundedRect(ctx, x1, y1, x2, y2, r, fill, null, 0);
+  ctx.restore();
+  drawRoundedRect(ctx, x1, y1, x2, y2, r, null, stroke, lineWidth);
+}
+
+function drawCirclePhoto(ctx, img, cx, cy, size) {
+  const r = size / 2;
+  const outerR = (size + 10) / 2;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(246,250,255,1)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR - 2, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(96,205,255,0.75)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const scale = Math.max(size / img.width, size / img.height);
+  const sw = size / scale;
+  const sh = size / scale;
+  const sx = (img.width - sw) / 2;
+  const sy = (img.height - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, cx - r, cy - r, size, size);
+  ctx.restore();
+}
+
+async function makeLineup() {
+  const btn = document.getElementById('generate-btn');
+  btn.textContent = "⏳ 라인업 이미지 생성 중...";
+  btn.disabled = true;
+
+  try {
+    await document.fonts.ready;
+    const canvas = document.getElementById('lineupCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 1536);
+
+    const bg = await loadImg('background.png');
+    if (bg) {
+      ctx.drawImage(bg, 0, 0, 1024, 1536);
+    } else {
+      ctx.fillStyle = '#0b1d3a';
+      ctx.fillRect(0, 0, 1024, 1536);
+    }
+
+    const matchup = document.getElementById('matchup').value.trim();
+    const gameTime = document.getElementById('datetime').value.trim();
+
+    drawBoxWithShadow(ctx, [72, 252, 694, 340], 28, 'rgba(7,20,43,0.92)');
+    drawRoundedRect(ctx, 90, 270, 195, 320, 18, 'rgba(220,232,245,0.96)');
+    centerText(ctx, [90, 270, 195, 320], "MATCH", 22, '#0a1426');
+
+    let team1 = matchup, team2 = "";
+    if (matchup.toUpperCase().includes("VS")) {
+      const parts = matchup.split(/vs/i);
+      team1 = parts[0].trim();
+      team2 = parts.slice(1).join("VS").trim();
+    }
+
+    ctx.beginPath();
+    ctx.arc(369, 297, 37, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(18,84,182,0.96)';
+    ctx.fill();
+    ctx.strokeStyle = '#f6f9fd';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    centerText(ctx, [332, 260, 406, 334], "VS", 28, '#f5f8fc');
+
+    const t1Size = fitFont(ctx, team1, 115, 28, 14);
+    const t2Size = fitFont(ctx, team2, 260, 28, 14);
+    centerText(ctx, [205, 258, 330, 334], team1, t1Size, '#f5f8fc');
+    centerText(ctx, [408, 258, 680, 334], team2, t2Size, '#f5f8fc');
+
+    drawBoxWithShadow(ctx, [724, 252, 952, 340], 28, 'rgba(10,31,63,0.93)');
+    ctx.font = fontStr(18);
+    ctx.fillStyle = '#78cdff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText("GAME TIME", 748, 270);
+
+    const timeSize = fitFont(ctx, gameTime, 180, 25, 14);
+    centerText(ctx, [740, 288, 936, 332], gameTime, timeSize, '#f5f8fc');
+
+    const players = [];
+    for (let i = 0; i < 10; i++) {
+      const name = document.getElementById(`name-${i}`).value.trim();
+      const pos = document.getElementById(`pos-${i}`).value.trim();
+      if (!name) continue;
+      const photoImg = await getPlayerPhoto(i, name);
+      players.push({ order: i + 1, name, position: pos, photoImg });
+    }
+
+    for (const p of players) {
+      if (!FIELD_POSITIONS[p.position]) continue;
+      const [x, y] = FIELD_POSITIONS[p.position];
+      const boxSize = PHOTO_SIZE + 10;
+      const cy = y - 85 + boxSize / 2;
+
+      if (p.photoImg) {
+        drawCirclePhoto(ctx, p.photoImg, x, cy, PHOTO_SIZE);
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, cy, boxSize / 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(12,28,52,0.92)';
+        ctx.fill();
+        ctx.strokeStyle = '#f6faff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        centerText(ctx, [x - boxSize/2, y - 85, x + boxSize/2, y - 85 + boxSize], "PHOTO", 17, '#f5f8fc');
+      }
+
+      const cardX = Math.floor(x - CARD_W / 2);
+      const cardY = Math.floor(y + 20);
+
+      ctx.beginPath();
+      ctx.moveTo(x - 11, cardY + CARD_H);
+      ctx.lineTo(x + 11, cardY + CARD_H);
+      ctx.lineTo(x, cardY + CARD_H + 18);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(220,232,244,0.98)';
+      ctx.fill();
+      ctx.strokeStyle = '#193c78';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      drawRoundedRect(ctx, cardX, cardY, cardX + CARD_W, cardY + CARD_H, 13, 'rgba(225,235,246,0.97)', '#1c5ab4', 3);
+      const tagW = 48;
+      drawRoundedRect(ctx, cardX + 4, cardY + 4, cardX + tagW, cardY + CARD_H - 4, 10, '#081e40');
+      centerText(ctx, [cardX + 4, cardY + 4, cardX + tagW, cardY + CARD_H - 4], p.position, 19, '#f5f8fc');
+      centerText(ctx, [cardX + tagW + 8, cardY + 2, cardX + CARD_W - 6, cardY + CARD_H - 2], p.name, 22, '#0a1426');
+    }
+
+    // 좌측 하단 STARTING ORDER 패널
+    const [lx1, ly1, lx2, ly2] = [28, 1048, 344, 1452];
+    drawBoxWithShadow(ctx, [lx1, ly1, lx2, ly2], 22, 'rgba(6,16,34,0.88)', '#66c9ff', 3);
+    drawRoundedRect(ctx, lx1 + 16, ly1 - 22, lx1 + 210, ly1 + 24, 16, 'rgba(28,96,188,0.96)', 'rgba(244,248,252,0.86)', 2);
+    centerText(ctx, [lx1 + 16, ly1 - 22, lx1 + 210, ly1 + 24], "STARTING ORDER", 20, '#f5f8fc');
+
+    ctx.font = fontStr(16);
+    ctx.fillStyle = '#aacdf0';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText("#", lx1 + 22, ly1 + 42);
+    ctx.fillText("NAME", lx1 + 58, ly1 + 42);
+    ctx.fillText("POS", lx2 - 60, ly1 + 42);
+
+    let rowY = ly1 + 70;
+    for (const p of players.slice(0, 10)) {
+      drawRoundedRect(ctx, lx1 + 16, rowY - 1, lx1 + 42, rowY + 23, 8, '#1654b2');
+      centerText(ctx, [lx1 + 16, rowY - 1, lx1 + 42, rowY + 23], String(p.order), 16, '#f5f8fc');
+
+      ctx.font = fontStr(20);
+      ctx.fillStyle = '#f5f8fc';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(p.name, lx1 + 56, rowY - 1);
+
+      ctx.font = fontStr(17);
+      ctx.fillStyle = '#c4d7ee';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.position, lx2 - 22, rowY);
+      rowY += 32;
+    }
+
+    // 우측 하단 BENCH 패널
+    const [bx1, by1, bx2, by2] = [700, 1285, 985, 1455];
+    drawBoxWithShadow(ctx, [bx1, by1, bx2, by2], 20, 'rgba(6,16,34,0.88)', '#66c9ff', 3);
+    drawRoundedRect(ctx, bx1 + 16, by1 - 18, bx1 + 122, by1 + 22, 14, 'rgba(28,96,188,0.96)', 'rgba(244,248,252,0.86)', 2);
+    centerText(ctx, [bx1 + 16, by1 - 18, bx1 + 122, by1 + 22], "BENCH", 18, '#f5f8fc');
+
+    ctx.font = fontStr(15);
+    ctx.fillStyle = '#aacdf0';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText("NAME", bx1 + 22, by1 + 20);
+    ctx.fillText("POS", bx2 - 60, by1 + 20);
+
+    const benchPlayers = [];
+    for (let i = 0; i < 6; i++) {
+      const bname = document.getElementById(`bname-${i}`).value.trim();
+      const bpos = document.getElementById(`bpos-${i}`).value.trim();
+      if (bname) benchPlayers.push({ name: bname, pos: bpos });
+    }
+
+    if (benchPlayers.length === 0) {
+      ctx.font = fontStr(18);
+      ctx.fillStyle = '#d7e1ec';
+      ctx.fillText("후보 없음", bx1 + 22, by1 + 62);
+    } else {
+      let bRowY = by1 + 46;
+      for (const b of benchPlayers) {
+        ctx.font = fontStr(18);
+        ctx.fillStyle = '#f5f8fc';
+        ctx.textAlign = 'left';
+        ctx.fillText(b.name, bx1 + 22, bRowY);
+
+        ctx.font = fontStr(16);
+        ctx.fillStyle = '#c4d7ee';
+        ctx.textAlign = 'right';
+        ctx.fillText(b.pos, bx2 - 20, bRowY + 1);
+        bRowY += 18;
+      }
+    }
+
+    const dataUrl = canvas.toDataURL('image/png', 0.95);
+    document.getElementById('result-img').src = dataUrl;
+    const previewArea = document.getElementById('preview-area');
+    previewArea.style.display = 'block';
+    previewArea.scrollIntoView({ behavior: 'smooth' });
+
+  } catch (err) {
+    alert("이미지 생성 중 오류가 발생했습니다: " + err.message);
+  } finally {
+    btn.textContent = "🎨 라인업 이미지 만들기";
+    btn.disabled = false;
+  }
+}
+
+function downloadImage() {
+  const canvas = document.getElementById('lineupCanvas');
+  const link = document.createElement('a');
+  link.download = 'lineup_result.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function shareImage() {
+  const canvas = document.getElementById('lineupCanvas');
+  canvas.toBlob(async (blob) => {
+    const file = new File([blob], "lineup_result.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ title: 'A-mens 라인업', files: [file] });
+      } catch (e) {}
+    } else {
+      downloadImage();
+    }
+  }, 'image/png');
+}
+
+initUI();
+</script>
+</body>
+</html>
