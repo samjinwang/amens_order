@@ -41,31 +41,29 @@
       margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
     }
     .input-group { display: flex; flex-direction: column; gap: 8px; }
-    .input-row { display: flex; gap: 5px; align-items: center; }
+    .input-row { display: flex; gap: 6px; align-items: center; }
     input[type="text"], select {
       background: #061022; color: #fff; border: 1px solid #2b4c7e;
-      border-radius: 8px; padding: 8px 8px; font-size: 13px; width: 100%;
+      border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%;
     }
-    .order-badge {
-      background: var(--btn); color: #fff; font-weight: 700; font-size: 13px;
-      min-width: 26px; height: 35px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .pos-select { width: 72px; flex-shrink: 0; text-align: center; font-weight: 700; padding: 8px 2px; }
     
-    /* 순서 변경 버튼 스타일 */
-    .swap-btn-group { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-    .btn-swap {
-      background: #19325c; color: #bfe4ff; border: 1px solid #3c6ca8;
-      border-radius: 4px; width: 22px; height: 16px; font-size: 10px;
-      display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+    /* 타순 번호 배지 (터치해서 교체 가능) */
+    .order-badge {
+      background: var(--btn); color: #fff; font-weight: 700; font-size: 14px;
+      min-width: 34px; height: 35px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
     }
-    .btn-swap:active { background: var(--btn); }
+    .order-badge:active { transform: scale(0.92); }
+    .order-badge.selected {
+      background: #ff7b25; border-color: #fff; box-shadow: 0 0 10px rgba(255,123,37,0.8);
+    }
 
+    .pos-select { width: 78px; flex-shrink: 0; text-align: center; font-weight: 700; }
     .file-label {
-      background: #1a3a6c; color: #bfe4ff; padding: 8px 6px;
-      border-radius: 8px; font-size: 11px; white-space: nowrap; cursor: pointer;
-      border: 1px solid #3c6ca8; text-align: center; min-width: 54px; flex-shrink: 0;
+      background: #1a3a6c; color: #bfe4ff; padding: 8px 10px;
+      border-radius: 8px; font-size: 12px; white-space: nowrap; cursor: pointer;
+      border: 1px solid #3c6ca8; text-align: center; min-width: 64px; flex-shrink: 0;
     }
     .file-label.has-file { background: #196b38; color: #fff; border-color: #2ea85c; }
     input[type="file"] { display: none; }
@@ -138,7 +136,7 @@
   <div class="section">
     <div class="section-title">
       <span>선발 라인업 (STARTING ORDER)</span>
-      <span style="font-size:11px; font-weight:normal; color:#9ab4d4;">▲▼로 순서변경 가능</span>
+      <span id="swap-guide" style="font-size:11px; font-weight:normal; color:#62c9ff;">번호를 눌러 교체하세요</span>
     </div>
     <div class="input-group" id="starter-list"></div>
     <datalist id="roster-names"></datalist>
@@ -212,6 +210,8 @@ const CARD_W = 174;
 const CARD_H = 52;
 
 const rowCustomPhotos = {};
+let selectedSwapIndex = null; // 타순 교체를 위해 먼저 선택된 번호 인덱스
+
 let savedMemberPhotos = {};
 try {
   savedMemberPhotos = JSON.parse(localStorage.getItem('amens_member_photos') || '{}');
@@ -242,11 +242,10 @@ function initUI() {
   }
 }
 
-// 선발 라인업 10개 행 렌더링 (순서 변경 시 상태 보존)
+// 선발 라인업 10개 행 렌더링
 function renderStarterRows() {
   const starterContainer = document.getElementById('starter-list');
   
-  // 현재 입력되어 있는 값들을 먼저 임시 저장
   const currentData = [];
   for (let i = 0; i < 10; i++) {
     const posEl = document.getElementById(`pos-${i}`);
@@ -263,14 +262,13 @@ function renderStarterRows() {
     row.className = 'input-row';
     const posOptions = POS_LIST.map(p => `<option value="${p}" ${p === currentData[i].pos ? 'selected' : ''}>${p}</option>`).join('');
     
+    // 선택된 배지일 경우 강조 클래스 추가
+    const isSelected = (selectedSwapIndex === i);
+    
     row.innerHTML = `
-      <div class="order-badge">${i + 1}</div>
+      <div class="order-badge ${isSelected ? 'selected' : ''}" onclick="handleBadgeClick(${i})" title="클릭해서 다른 번호와 교체">${i + 1}</div>
       <select class="pos-select" id="pos-${i}">${posOptions}</select>
       <input type="text" id="name-${i}" list="roster-names" value="${currentData[i].name}" placeholder="선수 이름">
-      <div class="swap-btn-group">
-        <button class="btn-swap" onclick="moveRow(${i}, -1)">▲</button>
-        <button class="btn-swap" onclick="moveRow(${i}, 1)">▼</button>
-      </div>
       <label class="file-label" id="label-${i}">
         ${rowCustomPhotos[i] ? '변경됨✓' : '사진변경'}
         <input type="file" accept="image/*" onchange="handleRowFile(${i}, this)">
@@ -280,36 +278,61 @@ function renderStarterRows() {
   }
 }
 
-// 특정 타순을 위(-1) 또는 아래(+1)와 교체
-function moveRow(index, direction) {
-  const targetIndex = index + direction;
-  if (targetIndex < 0 || targetIndex > 9) return; // 범위 초과 방지
+// 타순 번호 배지를 눌렀을 때의 교체(Swap) 로직
+function handleBadgeClick(index) {
+  const guideText = document.getElementById('swap-guide');
 
-  // 현재 입력값들 수집
-  const rows = [];
-  for (let i = 0; i < 10; i++) {
-    rows.push({
-      pos: document.getElementById(`pos-${i}`).value,
-      name: document.getElementById(`name-${i}`).value
-    });
+  if (selectedSwapIndex === null) {
+    // 1단계: 첫 번째 번호 선택
+    selectedSwapIndex = index;
+    guideText.textContent = `📍 ${index + 1}번 선택됨! 교체할 다른 번호를 누르세요.`;
+    guideText.style.color = '#ff7b25';
+    renderStarterRows();
+  } else if (selectedSwapIndex === index) {
+    // 자기 자신을 다시 누른 경우: 선택 취소
+    selectedSwapIndex = null;
+    guideText.textContent = "번호를 눌러 교체하세요";
+    guideText.style.color = '#62c9ff';
+    renderStarterRows();
+  } else {
+    // 2단계: 두 번째 번호 선택 완료 -> 데이터 교체 (Swap)
+    const firstIdx = selectedSwapIndex;
+    const secondIdx = index;
+
+    const rows = [];
+    for (let i = 0; i < 10; i++) {
+      rows.push({
+        pos: document.getElementById(`pos-${i}`).value,
+        name: document.getElementById(`name-${i}`).value
+      });
+    }
+
+    // 이름 및 포지션 맞교환
+    const tempRow = rows[firstIdx];
+    rows[firstIdx] = rows[secondIdx];
+    rows[secondIdx] = tempRow;
+
+    // 일회성 업로드 사진(rowCustomPhotos)도 함께 맞교환
+    const tempPhoto = rowCustomPhotos[firstIdx];
+    rowCustomPhotos[firstIdx] = rowCustomPhotos[secondIdx];
+    rowCustomPhotos[secondIdx] = tempPhoto;
+
+    // DOM 값 반영
+    for (let i = 0; i < 10; i++) {
+      document.getElementById(`pos-${i}`).value = rows[i].pos;
+      document.getElementById(`name-${i}`).value = rows[i].name;
+    }
+
+    selectedSwapIndex = null;
+    guideText.textContent = `✨ ${firstIdx + 1}번과 ${secondIdx + 1}번 교체 완료!`;
+    guideText.style.color = '#4cd97b';
+    renderStarterRows();
+
+    setTimeout(() => {
+      guideText.textContent = "번호를 눌러 교체하세요";
+      guideText.style.color = '#62c9ff';
+    }, 2500);
   }
-
-  // 데이터 교체 (Swap)
-  const temp = rows[index];
-  rows[index] = rows[targetIndex];
-  rows[targetIndex] = temp;
-
-  // 일회성 업로드 사진 데이터(rowCustomPhotos)도 위치 함께 교체
-  const tempPhoto = rowCustomPhotos[index];
-  rowCustomPhotos[index] = rowCustomPhotos[targetIndex];
-  rowCustomPhotos[targetIndex] = tempPhoto;
-
-  // 돔에 다시 반영하기 위해 임시로 DOM 값 강제 갱신 후 렌더링
-  for (let i = 0; i < 10; i++) {
-    document.getElementById(`pos-${i}`).value = rows[i].pos;
-    document.getElementById(`name-${i}`).value = rows[i].name;
-  }
-  renderStarterRows();
 }
 
 function resizeImageFile(file, maxSize = 300) {
@@ -384,7 +407,7 @@ async function getPlayerPhoto(idx, name) {
   return null;
 }
 
-/* ---------------- 팀원 사진 관리 모달 (재변경 가능) ---------------- */
+/* ---------------- 팀원 사진 관리 모달 ---------------- */
 function openPhotoModal() {
   renderModalRoster();
   document.getElementById('photo-modal').style.display = 'flex';
