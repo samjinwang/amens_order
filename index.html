@@ -41,21 +41,31 @@
       margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
     }
     .input-group { display: flex; flex-direction: column; gap: 8px; }
-    .input-row { display: flex; gap: 6px; align-items: center; }
+    .input-row { display: flex; gap: 5px; align-items: center; }
     input[type="text"], select {
       background: #061022; color: #fff; border: 1px solid #2b4c7e;
-      border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%;
+      border-radius: 8px; padding: 8px 8px; font-size: 13px; width: 100%;
     }
     .order-badge {
       background: var(--btn); color: #fff; font-weight: 700; font-size: 13px;
-      min-width: 28px; height: 35px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
+      min-width: 26px; height: 35px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pos-select { width: 76px; flex-shrink: 0; text-align: center; font-weight: 700; }
+    .pos-select { width: 72px; flex-shrink: 0; text-align: center; font-weight: 700; padding: 8px 2px; }
+    
+    /* 순서 변경 버튼 스타일 */
+    .swap-btn-group { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+    .btn-swap {
+      background: #19325c; color: #bfe4ff; border: 1px solid #3c6ca8;
+      border-radius: 4px; width: 22px; height: 16px; font-size: 10px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+    }
+    .btn-swap:active { background: var(--btn); }
+
     .file-label {
-      background: #1a3a6c; color: #bfe4ff; padding: 8px 9px;
-      border-radius: 8px; font-size: 12px; white-space: nowrap; cursor: pointer;
-      border: 1px solid #3c6ca8; text-align: center; min-width: 62px;
+      background: #1a3a6c; color: #bfe4ff; padding: 8px 6px;
+      border-radius: 8px; font-size: 11px; white-space: nowrap; cursor: pointer;
+      border: 1px solid #3c6ca8; text-align: center; min-width: 54px; flex-shrink: 0;
     }
     .file-label.has-file { background: #196b38; color: #fff; border-color: #2ea85c; }
     input[type="file"] { display: none; }
@@ -128,7 +138,7 @@
   <div class="section">
     <div class="section-title">
       <span>선발 라인업 (STARTING ORDER)</span>
-      <span style="font-size:11px; font-weight:normal; color:#9ab4d4;">선택/입력 시 사진 자동매칭</span>
+      <span style="font-size:11px; font-weight:normal; color:#9ab4d4;">▲▼로 순서변경 가능</span>
     </div>
     <div class="input-group" id="starter-list"></div>
     <datalist id="roster-names"></datalist>
@@ -161,7 +171,7 @@
         <button class="btn-xs" style="background:#2b4c7e;" onclick="closePhotoModal()">닫기 ✕</button>
       </div>
       <div style="font-size:12px; color:#9ab4d4; margin-bottom:10px;">
-        원하는 이미지로 변경하면 스마트폰(브라우저)에 저장되어 다음에도 바뀐 사진으로 자동 적용됩니다.
+        등록된 사진을 언제든 다시 <b>[사진 업로드]</b>하여 새로운 이미지로 재변경할 수 있습니다.
       </div>
       <div class="modal-body" id="modal-roster-list"></div>
     </div>
@@ -170,7 +180,6 @@
   <canvas id="lineupCanvas" width="1024" height="1536" style="display:none;"></canvas>
 
 <script>
-// 보내주신 이미지의 15명 팀원 명단 및 실제 파일명 하드코딩
 const TEAM_ROSTER = [
   { full: "김수현", short: "수현", file: "김수현.jpg" },
   { full: "김지한", short: "지한", file: "김지한.jpg" },
@@ -202,9 +211,7 @@ const PHOTO_SIZE = 98;
 const CARD_W = 174;
 const CARD_H = 52;
 
-// 1) 각 타순별 일회성 업로드 사진 저장
 const rowCustomPhotos = {};
-// 2) 팀원별 영구 변경 사진 저장 (localStorage 연동)
 let savedMemberPhotos = {};
 try {
   savedMemberPhotos = JSON.parse(localStorage.getItem('amens_member_photos') || '{}');
@@ -213,7 +220,6 @@ try {
 }
 
 function initUI() {
-  // 자동완성 datalist 세팅 (풀네임 및 성 뺀 이름 모두 지원)
   const dataList = document.getElementById('roster-names');
   TEAM_ROSTER.forEach(m => {
     const opt = document.createElement('option');
@@ -221,22 +227,7 @@ function initUI() {
     dataList.appendChild(opt);
   });
 
-  const starterContainer = document.getElementById('starter-list');
-  for (let i = 0; i < 10; i++) {
-    const row = document.createElement('div');
-    row.className = 'input-row';
-    const posOptions = POS_LIST.map(p => `<option value="${p}" ${p === DEFAULT_POS[i] ? 'selected' : ''}>${p}</option>`).join('');
-    row.innerHTML = `
-      <div class="order-badge">${i + 1}</div>
-      <select class="pos-select" id="pos-${i}">${posOptions}</select>
-      <input type="text" id="name-${i}" list="roster-names" value="${DEFAULT_NAMES[i]}" placeholder="선수 이름">
-      <label class="file-label" id="label-${i}">
-        사진변경
-        <input type="file" accept="image/*" onchange="handleRowFile(${i}, this)">
-      </label>
-    `;
-    starterContainer.appendChild(row);
-  }
+  renderStarterRows();
 
   const benchContainer = document.getElementById('bench-list');
   for (let i = 0; i < 6; i++) {
@@ -251,7 +242,76 @@ function initUI() {
   }
 }
 
-// 이미지를 리사이즈해서 Base64로 반환 (모바일 용량 최적화)
+// 선발 라인업 10개 행 렌더링 (순서 변경 시 상태 보존)
+function renderStarterRows() {
+  const starterContainer = document.getElementById('starter-list');
+  
+  // 현재 입력되어 있는 값들을 먼저 임시 저장
+  const currentData = [];
+  for (let i = 0; i < 10; i++) {
+    const posEl = document.getElementById(`pos-${i}`);
+    const nameEl = document.getElementById(`name-${i}`);
+    currentData.push({
+      pos: posEl ? posEl.value : DEFAULT_POS[i],
+      name: nameEl ? nameEl.value : DEFAULT_NAMES[i]
+    });
+  }
+
+  starterContainer.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    const posOptions = POS_LIST.map(p => `<option value="${p}" ${p === currentData[i].pos ? 'selected' : ''}>${p}</option>`).join('');
+    
+    row.innerHTML = `
+      <div class="order-badge">${i + 1}</div>
+      <select class="pos-select" id="pos-${i}">${posOptions}</select>
+      <input type="text" id="name-${i}" list="roster-names" value="${currentData[i].name}" placeholder="선수 이름">
+      <div class="swap-btn-group">
+        <button class="btn-swap" onclick="moveRow(${i}, -1)">▲</button>
+        <button class="btn-swap" onclick="moveRow(${i}, 1)">▼</button>
+      </div>
+      <label class="file-label" id="label-${i}">
+        ${rowCustomPhotos[i] ? '변경됨✓' : '사진변경'}
+        <input type="file" accept="image/*" onchange="handleRowFile(${i}, this)">
+      </label>
+    `;
+    starterContainer.appendChild(row);
+  }
+}
+
+// 특정 타순을 위(-1) 또는 아래(+1)와 교체
+function moveRow(index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex > 9) return; // 범위 초과 방지
+
+  // 현재 입력값들 수집
+  const rows = [];
+  for (let i = 0; i < 10; i++) {
+    rows.push({
+      pos: document.getElementById(`pos-${i}`).value,
+      name: document.getElementById(`name-${i}`).value
+    });
+  }
+
+  // 데이터 교체 (Swap)
+  const temp = rows[index];
+  rows[index] = rows[targetIndex];
+  rows[targetIndex] = temp;
+
+  // 일회성 업로드 사진 데이터(rowCustomPhotos)도 위치 함께 교체
+  const tempPhoto = rowCustomPhotos[index];
+  rowCustomPhotos[index] = rowCustomPhotos[targetIndex];
+  rowCustomPhotos[targetIndex] = tempPhoto;
+
+  // 돔에 다시 반영하기 위해 임시로 DOM 값 강제 갱신 후 렌더링
+  for (let i = 0; i < 10; i++) {
+    document.getElementById(`pos-${i}`).value = rows[i].pos;
+    document.getElementById(`name-${i}`).value = rows[i].name;
+  }
+  renderStarterRows();
+}
+
 function resizeImageFile(file, maxSize = 300) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -271,7 +331,6 @@ function resizeImageFile(file, maxSize = 300) {
   });
 }
 
-// 타순 줄에서 직접 사진 변경 시
 async function handleRowFile(idx, input) {
   const file = input.files[0];
   if (!file) return;
@@ -282,7 +341,6 @@ async function handleRowFile(idx, input) {
   lbl.classList.add("has-file");
 }
 
-// 이름으로 TEAM_ROSTER에서 매칭되는 팀원 찾기 (김찬송 or 찬송 모두 매칭)
 function findRosterMember(inputName) {
   const clean = inputName.trim();
   return TEAM_ROSTER.find(m => m.full === clean || m.short === clean);
@@ -298,10 +356,6 @@ function loadImg(src) {
   });
 }
 
-// 선수 사진 가져오기 우선순위:
-// 1순위: 해당 타순 줄에서 직접 변경한 사진
-// 2순위: [팀원 사진 관리]에서 내가 바꿔둔 커스텀 사진
-// 3순위: GitHub에 업로드된 기본 파일 (루트 경로 및 photos/ 폴더 모두 탐색)
 async function getPlayerPhoto(idx, name) {
   if (rowCustomPhotos[idx]) {
     return await loadImg(rowCustomPhotos[idx]);
@@ -320,7 +374,6 @@ async function getPlayerPhoto(idx, name) {
     if (img) return img;
   }
 
-  // 명단에 없는 이름일 경우 일반 확장자 탐색
   const exts = ['jpg', 'jpeg', 'png'];
   for (const ext of exts) {
     let img = await loadImg(`${encodeURIComponent(name)}.${ext}`);
@@ -331,7 +384,7 @@ async function getPlayerPhoto(idx, name) {
   return null;
 }
 
-/* ---------------- 팀원 사진 관리 모달 로직 ---------------- */
+/* ---------------- 팀원 사진 관리 모달 (재변경 가능) ---------------- */
 function openPhotoModal() {
   renderModalRoster();
   document.getElementById('photo-modal').style.display = 'flex';
@@ -344,7 +397,7 @@ function closePhotoModal() {
 function renderModalRoster() {
   const list = document.getElementById('modal-roster-list');
   list.innerHTML = '';
-  TEAM_ROSTER.forEach((m, idx) => {
+  TEAM_ROSTER.forEach((m) => {
     const hasCustom = !!savedMemberPhotos[m.full];
     const thumbSrc = hasCustom ? savedMemberPhotos[m.full] : m.file;
     const item = document.createElement('div');
@@ -355,13 +408,13 @@ function renderModalRoster() {
         <div>
           <div style="font-weight:700; font-size:14px;">${m.full} <span style="color:#9ab4d4; font-size:12px;">(${m.short})</span></div>
           <div style="font-size:11px; color:${hasCustom ? '#4cd97b' : '#8fa8c8'};">
-            ${hasCustom ? '사용자 지정 사진 적용중' : '기본 파일 (' + m.file + ')'}
+            ${hasCustom ? '사용자 지정 사진 적용중 (재변경 가능)' : '기본 파일 (' + m.file + ')'}
           </div>
         </div>
       </div>
       <div class="roster-actions">
         <label class="btn-xs">
-          사진 업로드
+          ${hasCustom ? '재변경' : '사진 업로드'}
           <input type="file" accept="image/*" onchange="updateMemberPhoto('${m.full}', this)">
         </label>
         ${hasCustom ? `<button class="btn-xs reset" onclick="resetMemberPhoto('${m.full}')">기본값</button>` : ''}
