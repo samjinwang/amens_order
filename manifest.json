@@ -1,0 +1,9 @@
+{
+  "name": "A-mens 라인업 생성기",
+  "short_name": "A-mens 라인업",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#07142b",
+  "theme_color": "#07142b",
+  "orientation": "portrait"
+}
